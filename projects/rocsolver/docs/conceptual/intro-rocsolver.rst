@@ -11,7 +11,7 @@ Introduction to rocSOLVER
 rocSOLVER is an implementation of a subset of 
 `Linear Algebra PACKage (LAPACK) routines <https://www.netlib.org/lapack/index.html>`_.
 
-These routines support both real and complex matrices, for single and double precision.
+These routines support both real and complex matrices, in single and double precision.
 They provide solutions for a wide range of complex Linear Algebra problems, including:
 
 *  Solving systems of linear equations and matrix inversion
@@ -47,7 +47,7 @@ The rocSOLVER routines are divided into several categories, based on their visib
 perspective. The categories are:
 
 * **LAPACK functions**: The high-level functions that LAPACK users are most likely to call. 
-  These routines normally solve a complete standard problem (such as the Symmetric Eigenvalue Problem), or
+  These routines normally solve a complete well-known problem (such as the Symmetric Eigenvalue Problem), or
   perform a computational task that users may need to build their own workflows when solving specific problems 
   from their applications (reducing a matrix to tridiagonal form, for example). 
   These category corresponds to what LAPACK clasifies as **driver** and 
@@ -127,4 +127,8 @@ Some main LAPACK computations that rocSOLVER performs:
 *  ``GQR``: Generation of orthogonal matrix from QR factorization
 *  ``RFG``: Generation of Householder reflection
 *  ``EV`` and ``EVD``: Eigenvalue solver and Eigenvalue solver with divide & conquer approach
+
+Other examples of LAPACK-like computations performed in rocSOLVER:
+
 *  ``EVJ``: Jacobi iteration for Eigenvalue solver
+*  ``BLTTRF``: Triangular factorization of block tridiagonal matrices
