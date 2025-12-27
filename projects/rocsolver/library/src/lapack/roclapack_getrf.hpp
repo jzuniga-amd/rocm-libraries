@@ -472,6 +472,9 @@ rocblas_status getrf_panelLU(rocblas_handle handle,
                              I* permut_idx,
                              const rocblas_stride stridePI)
 {
+    int sync = atoi(getenv("SYNCLEVEL"));
+   printf("panelLU function on the host: startting factorization of a %d x %d block panel...\n",mm,nn);
+
     static constexpr bool ISBATCHED = BATCHED || STRIDED;
 
     hipStream_t stream;
@@ -490,6 +493,7 @@ rocblas_status getrf_panelLU(rocblas_handle handle,
     I dimx, dimy, blocks, blocksy;
     dim3 grid, threads;
     size_t lmemsize;
+printf("panelLU function on the host: sub-dividing panel in sub-panels of %d columns...\n",blk);
 
     // Main loop
     for(I k = 0; k < nn; k += blk)
@@ -497,10 +501,18 @@ rocblas_status getrf_panelLU(rocblas_handle handle,
         jb = std::min(nn - k, blk); // number of columns/pivots in the inner block
 
         // factorize inner panel block
+		printf("panelLU function on the host: call GETF2 to factorize sub-panel starting at column %d... <<<<<< STUFF RUNS ON THE GPU\n",k);
         rocsolver_getf2_template<ISBATCHED, T>(handle, mm - k, jb, A, shiftA + idx2D(k, k, inca, lda),
                                                inca, lda, strideA, ipiv, shiftP + k, strideP, info,
                                                batch_count, scalars, pivotval, pivotidx, pivot,
                                                offset + k, permut_idx, stridePI);
+	if(sync > 1)
+	{
+		printf("panelLU function on the host: waiting for GETF2 to complete... <<<<<< hipDeviceSynchronize\n");
+		hipDeviceSynchronize();
+		printf("panelLU function on the host: GETF2 is done...\n");
+        }
+
         if(pivot)
         {
             dimx = jb;
@@ -511,26 +523,49 @@ rocblas_status getrf_panelLU(rocblas_handle handle,
             lmemsize = dimx * dimy * sizeof(T);
 
             // swap rows
+		printf("panelLU function on the host: call kernel row_permutate to permutate rows in sub-panel accordingly... <<<<<< STUFF RUNS ON THE GPU\n");
             ROCSOLVER_LAUNCH_KERNEL(getrf_row_permutate<T>, grid, threads, lmemsize, stream, n,
                                     offset + k, jb, A, r_shiftA + k * inca, inca, lda, strideA,
                                     permut_idx, stridePI);
+	    if(sync > 1)
+	    {
+		printf("panelLU function on the host: waiting for kernel row_permutate to complete... <<<<<< hipDeviceSynchronize\n");
+		hipDeviceSynchronize();
+		printf("panelLU function on the host: kernel row_permutate is done...\n");
+	    }
         }
 
         // update trailing sub-block
         if(k + jb < nn)
         {
+		printf("panelLU function on the host: call rocblas_TRSM to update the rest of the panel... <<<<<< STUFF RUNS ON THE GPU\n");
             rocsolver_trsm_lower<BATCHED, STRIDED, T>(
                 handle, rocblas_side_left, rocblas_operation_none, rocblas_diagonal_unit, jb,
                 nn - k - jb, A, shiftA + idx2D(k, k, inca, lda), inca, lda, strideA, A,
                 shiftA + idx2D(k, k + jb, inca, lda), inca, lda, strideA, batch_count, optim_mem,
                 work1, work2, work3, work4);
-
+	if(sync > 1)
+	{	
+	    printf("panelLU function on the host: waiting for rocblas_TRSM to complete... <<<<<< hipDeviceSynchronize\n");
+		hipDeviceSynchronize();
+		printf("panelLU function on the host: rocblas_TRSM is done...\n");
+	}
             if(k + jb < mm)
+            {
+		printf("panelLU function on the host: call rocblas_GEMM to update the rest of the panel... <<<<<< STUFF RUNS ON THE GPU\n");
                 rocsolver_gemm(handle, rocblas_operation_none, rocblas_operation_none, mm - k - jb,
                                nn - k - jb, jb, &minone, A, shiftA + idx2D(k + jb, k, inca, lda),
                                inca, lda, strideA, A, shiftA + idx2D(k, k + jb, inca, lda), inca,
                                lda, strideA, &one, A, shiftA + idx2D(k + jb, k + jb, inca, lda),
                                inca, lda, strideA, batch_count, (T**)nullptr);
+	
+	if(sync > 1)
+	{	
+		printf("panelLU function on the host: waiting for rocblas_GEMM to complete... <<<<<< hipDeviceSynchronize\n");
+		hipDeviceSynchronize();
+		printf("panelLU function on the host: rocblas_GEMM is done...\n");
+	}
+	    }
         }
     }
 
@@ -651,6 +686,9 @@ rocblas_status rocsolver_getrf_template(rocblas_handle handle,
     ROCSOLVER_ENTER("getrf", "m:", m, "n:", n, "shiftA:", shiftA, "inca:", inca, "lda:", lda,
                     "shiftP:", shiftP, "bc:", batch_count);
 
+    int sync = atoi(getenv("SYNCLEVEL"));
+printf("GETRF function on the host: startting factorization of a %d x %d matrix...\n",m,n);
+
     // quick return
     if(batch_count == 0)
         return rocblas_status_success;
@@ -674,11 +712,16 @@ rocblas_status rocsolver_getrf_template(rocblas_handle handle,
 
     // size of outer blocks
     I blk = getrf_get_blksize<ISBATCHED, T>(dim, pivot);
+printf("GETRF function on the host: matrix will be divided in blocks of size %d...\n",blk);
 
     if(blk == 0)
+    {
+	printf("GETRF function on the host: taking the path of the unblocked algorithm (there will be no call to rocblas_gemm)...\n");
         return rocsolver_getf2_template<ISBATCHED, T>(handle, m, n, A, shiftA, inca, lda, strideA,
                                                       ipiv, shiftP, strideP, info, batch_count,
                                                       scalars, pivotval, pivotidx, pivot);
+    }
+printf("GETRF function on the host: taking the path of the blocked algorithm (there will calls to rocblas_gemm with scalars on the host)...\n");
 
     // everything must be executed with scalars on the host
     rocblas_pointer_mode old_mode;
@@ -708,11 +751,20 @@ rocblas_status rocsolver_getrf_template(rocblas_handle handle,
 
         if(pivot || panel)
         {
+	
+		printf("GETRF function on the host: call panelLU to factorize block panel starting at column %d... <<<<<< STUFF RUNS ON THE GPU\n",j);
+	    
             // factorize outer block panel
             getrf_panelLU<BATCHED, STRIDED, T>(handle, m - j, jb, n, A, shiftA + j * inca, inca,
                                                lda, strideA, ipiv, shiftP + j, strideP, info,
                                                batch_count, pivot, scalars, work1, work2, work3,
                                                work4, optim_mem, pivotval, pivotidx, j, iipiv, m);
+	if(sync > 0)
+	{
+	    printf("GETRF function on the host: waiting for panelLU to complete... <<<<<< hipDeviceSynchronize\n");
+		hipDeviceSynchronize();
+		printf("GETRF function on the host: panelLU is done...\n");
+	}
         }
         else
         {
@@ -736,19 +788,33 @@ rocblas_status rocsolver_getrf_template(rocblas_handle handle,
         nn = n - nextpiv; //size for the matrix update
         if(nextpiv < n)
         {
+		printf("GETRF function on the host: call rocblas_TRSM to update the rest of the matrix... <<<<<< STUFF RUNS ON THE GPU\n");
             rocsolver_trsm_lower<BATCHED, STRIDED, T>(
                 handle, rocblas_side_left, rocblas_operation_none, rocblas_diagonal_unit, jb, nn, A,
                 shiftA + idx2D(j, j, inca, lda), inca, lda, strideA, A,
                 shiftA + idx2D(j, nextpiv, inca, lda), inca, lda, strideA, batch_count, optim_mem,
                 work1, work2, work3, work4);
+	    if(sync > 0)
+	    {
+	    printf("GETRF function on the host: waiting for rocblas_TRSM to complete... <<<<<< hipDeviceSynchronize\n");
+		hipDeviceSynchronize();
+		printf("GETRF function on the host: rocblas_TRSM is done...\n");
+	    }
 
             if(nextpiv < m)
             {
+		printf("GETRF function on the host: call rocblas_GEMM to update the rest of the matrix... <<<<<< STUFF RUNS ON THE GPU\n");
                 rocsolver_gemm(handle, rocblas_operation_none, rocblas_operation_none, mm, nn, jb,
                                &minone, A, shiftA + idx2D(nextpiv, j, inca, lda), inca, lda,
                                strideA, A, shiftA + idx2D(j, nextpiv, inca, lda), inca, lda,
                                strideA, &one, A, shiftA + idx2D(nextpiv, nextpiv, inca, lda), inca,
                                lda, strideA, batch_count, (T**)nullptr);
+	if(sync > 0)
+	{
+	    printf("GETRF function on the host: waiting for rocblas_GEMM to complete... <<<<<< hipDeviceSynchronize\n");
+		hipDeviceSynchronize();
+		printf("GETRF function on the host: rocblas_GEMM is done...\n");
+	}
             }
         }
     }

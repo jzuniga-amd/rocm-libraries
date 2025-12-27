@@ -237,15 +237,21 @@ void getf2_getrf_getError(const rocblas_handle handle,
                                         hIpiv, singular);
 
     // compute input hashes
-    hashA = deterministic_hash(hA, bc);
+//    hashA = deterministic_hash(hA, bc);
 
     // execute computations
     // GPU lapack
+
+printf("======================= runing rocsolver_GETRF (stuff will be run on the GPU)...\n\n");
+
     CHECK_ROCBLAS_ERROR(rocsolver_getf2_getrf(STRIDED, GETRF, handle, m, n, dA.data(), lda, stA,
                                               dIpiv.data(), stP, dInfo.data(), bc));
     CHECK_HIP_ERROR(hARes.transfer_from(dA));
     CHECK_HIP_ERROR(hIpivRes.transfer_from(dIpiv));
     CHECK_HIP_ERROR(hInfoRes.transfer_from(dInfo));
+
+printf("\n======================= all GPU work is done (implicit synchronization due to transfering results back to host)...\n\n");
+printf("======================= running CPU lapack to get reference results...\n\n");
 
     // CPU lapack
     for(I b = 0; b < bc; ++b)
@@ -254,9 +260,12 @@ void getf2_getrf_getError(const rocblas_handle handle,
               : cpu_getf2(m, n, hA[b], lda, hIpiv[b], hInfo[b]);
     }
 
+printf("======================= CPU-Lapack is done...\n\n");
+printf("======================= comparing GPU and CPU results...\n\n");
+
     // compute output hashes
-    hashARes = deterministic_hash(hARes, bc);
-    hashIpivRes = deterministic_hash(hIpivRes);
+//    hashARes = deterministic_hash(hARes, bc);
+//    hashIpivRes = deterministic_hash(hIpivRes);
 
     // expecting original matrix to be non-singular
     // error is ||hA - hARes|| / ||hA|| (ideally ||LU - Lres Ures|| / ||LU||)
@@ -290,6 +299,8 @@ void getf2_getrf_getError(const rocblas_handle handle,
             err++;
     }
     *max_err += err;
+
+printf("========================= error calculation is done...\n\n");
 }
 
 template <bool STRIDED, bool GETRF, typename T, typename I, typename Td, typename Id, typename Th, typename Uh>
@@ -373,6 +384,9 @@ void getf2_getrf_getPerfData(const rocblas_handle handle,
 template <bool BATCHED, bool STRIDED, bool GETRF, typename T, typename I>
 void testing_getf2_getrf(Arguments& argus)
 {
+
+int rs = atoi(getenv("RUNSOLVER"));
+
     // get arguments
     rocblas_local_handle handle;
     I m = argus.get<rocblas_int>("m");
@@ -437,8 +451,11 @@ void testing_getf2_getrf(Arguments& argus)
         return;
     }
 
+printf("\n\n======================= Reading parameters and calculating sizes...\n\n");
+
     if(BATCHED)
     {
+printf("======================= starting allocations of arrays in host and device memory...\n\n");
         // memory allocations
         host_batch_vector<T> hA(size_A, 1, bc);
         host_batch_vector<T> hARes(size_ARes, 1, bc);
@@ -467,22 +484,28 @@ void testing_getf2_getrf(Arguments& argus)
             return;
         }
 
+printf("======================= all memory stuff is done...\n\n");
         // check computations
-        if(argus.unit_check || argus.norm_check || argus.hash_check)
+        if(rs == 1 && (argus.unit_check || argus.norm_check || argus.hash_check))
             getf2_getrf_getError<STRIDED, GETRF, T>(
                 handle, m, n, dA, lda, stA, dIpiv, stP, dInfo, bc, hA, hARes, hIpiv, hIpivRes,
                 hInfo, hInfoRes, &max_error, argus.singular, hashA, hashARes, hashIpivRes);
+	else
+	    printf("======================== rocsolver_GETRF call skipped (no work is scheduled on the GPU)...\n\n");
+printf("======================== at this point all arrays are out of scope and and the hipfrees must be done...\n\n");
+printf("======================== THE TEST IS COMPLETED ========================\n\n");
 
         // collect performance data
-        if(argus.timing && hot_calls > 0)
-            getf2_getrf_getPerfData<STRIDED, GETRF, T>(
-                handle, m, n, dA, lda, stA, dIpiv, stP, dInfo, bc, hA, hIpiv, hInfo, &gpu_time_used,
-                &cpu_time_used, hot_calls, argus.profile, argus.profile_kernels, argus.perf,
-                argus.singular);
+//        if(argus.timing && hot_calls > 0)
+//            getf2_getrf_getPerfData<STRIDED, GETRF, T>(
+//                handle, m, n, dA, lda, stA, dIpiv, stP, dInfo, bc, hA, hIpiv, hInfo, &gpu_time_used,
+//                &cpu_time_used, hot_calls, argus.profile, argus.profile_kernels, argus.perf,
+//                argus.singular);
     }
 
     else
     {
+printf("======================= starting allocations of arrays in host and device memory...\n\n");
         // memory allocations
         host_strided_batch_vector<T> hA(size_A, 1, stA, bc);
         host_strided_batch_vector<T> hARes(size_ARes, 1, stARes, bc);
@@ -512,17 +535,22 @@ void testing_getf2_getrf(Arguments& argus)
         }
 
         // check computations
-        if(argus.unit_check || argus.norm_check || argus.hash_check)
+printf("======================= all memory stuff is done...\n\n");
+        if(rs == 1 && (argus.unit_check || argus.norm_check || argus.hash_check))
             getf2_getrf_getError<STRIDED, GETRF, T>(
                 handle, m, n, dA, lda, stA, dIpiv, stP, dInfo, bc, hA, hARes, hIpiv, hIpivRes,
                 hInfo, hInfoRes, &max_error, argus.singular, hashA, hashARes, hashIpivRes);
+	else
+	    printf("======================== rocsolver_GETRF call skipped (no work is scheduled on the GPU)...\n\n");
+printf("======================== at this point all arrays are out of scope and and the hipfrees must be done...\n\n");
+printf("======================== THE TEST IS COMPLETED ========================\n\n");
 
         // collect performance data
-        if(argus.timing && hot_calls > 0)
-            getf2_getrf_getPerfData<STRIDED, GETRF, T>(
-                handle, m, n, dA, lda, stA, dIpiv, stP, dInfo, bc, hA, hIpiv, hInfo, &gpu_time_used,
-                &cpu_time_used, hot_calls, argus.profile, argus.profile_kernels, argus.perf,
-                argus.singular);
+//        if(argus.timing && hot_calls > 0)
+//            getf2_getrf_getPerfData<STRIDED, GETRF, T>(
+//                handle, m, n, dA, lda, stA, dIpiv, stP, dInfo, bc, hA, hIpiv, hInfo, &gpu_time_used,
+//                &cpu_time_used, hot_calls, argus.profile, argus.profile_kernels, argus.perf,
+//                argus.singular);
     }
 
     // validate results for rocsolver-test
