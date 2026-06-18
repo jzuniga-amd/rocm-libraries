@@ -304,6 +304,11 @@ void cholqr_getError(const rocblas_handle handle,
     cholqr_initData<true, false, T>(handle, cholshift, cholnum, m, n, dA, lda, stA, dW, ldw, stW,
                                     dSigma, bc, hA, hW, hSigma, sigma, singular);
 
+
+print_host_matrix(std::cout,"A0 host",m,n,hA[0],lda);
+print_host_matrix(std::cout,"A1 host",m,n,hA[1],lda);
+print_host_matrix(std::cout,"A3 host",m,n,hA[2],lda);
+
     // -------------------------------------------
     // compute orthogonality error:
     // -------------------------------------------
@@ -318,14 +323,23 @@ void cholqr_getError(const rocblas_handle handle,
 
     for(auto cnum = start; cnum <= cholnum; ++cnum)
     {
+printf("---------- at cnum = %d\n",cnum);
+
+
         cholqr_initData<false, true, T>(handle, cholshift, cholnum, m, n, dA, lda, stA, dW, ldw,
                                         stW, dSigma, bc, hA, hW, hSigma, sigma, singular);
+
+//print_device_matrix(std::cout,"A0 device",m,n,dA.data(),lda,lda*n,0);
+//print_device_matrix(std::cout,"A1 device",m,n,dA.data(),lda,lda*n,1);
+//print_device_matrix(std::cout,"A2 device",m,n,dA.data(),lda,lda*n,2);
+print_device_matrix(std::cout,"sigma",1,bc,dSigma.data(),1);
 
         // execute GPU cholqr
         CHECK_ROCBLAS_ERROR(rocsolver_cholqr(STRIDED, handle, cholshift, cnum, m, n, dA.data(), lda,
                                              stA, dW.data(), ldw, stW, dSigma.data(), dnr.data(), bc));
         CHECK_HIP_ERROR(hARes.transfer_from(dA));
         CHECK_HIP_ERROR(hnr.transfer_from(dnr));
+print_device_matrix(std::cout,"sigma",1,bc,dSigma.data(),1);
 
         for(I b = 0; b < bc; ++b)
         {
@@ -345,6 +359,7 @@ void cholqr_getError(const rocblas_handle handle,
                          T(1), hARes[b], lda, hARes[b], lda, T(0), QtQ.data(), mn);
             }
             err2[b] = norm_error('F', nr, nr, mn, identity.data(), QtQ.data());
+printf(" b = %d: err1 = %2.15f, err2 = %2.15f\n",b,err1[b],err2[b]);
 
             // verify that orthogonality of Q improved
             if(err1[b] > MN * eps)
@@ -538,6 +553,9 @@ void testing_cholqr(Arguments& argus)
                                                    (T*)nullptr, lda, stA, (T*)nullptr, ldw, stW,
                                                    (S*)nullptr, (I*)nullptr, bc),
                                   rocblas_status_not_implemented);
+
+        if(argus.timing)
+            rocsolver_bench_inform(inform_not_implemented);
 
         return;
     }

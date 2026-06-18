@@ -62,4 +62,9 @@ target_compile_definitions(rocsolver-bench PRIVATE
   ROCSOLVER_CLIENTS_BENCH
 )
 
+# Mirror feature flags to test behaviour
+if(ROCSOLVER_ENABLE_CHOLQR)
+  target_compile_definitions(rocsolver-bench PRIVATE ROCSOLVER_ENABLE_CHOLQR)
+endif()
+
 rocm_install(TARGETS rocsolver-bench COMPONENT benchmarks)
