@@ -175,8 +175,9 @@ def get_size_configurations(case, mode):
             else:
                 size += list(chain(range(4096, 8192, 256), range(8192, 12800, 512)))
         elif c == 'huge': # huge == large for batch cases
-            if mode == 'batched' and 'large' not in case:
-                size += list(chain(zip(range(544, 1050, 32), repeat(500)), zip(range(1088, 2050, 64), repeat(50))))
+            if mode == 'batched':
+                if 'large' not in case:
+                    size += list(chain(zip(range(544, 1050, 32), repeat(500)), zip(range(1088, 2050, 64), repeat(50))))
             else:
                 size += list(chain(range(12800, 23040, 2048), range(23040, 32768, 4096)))
     return size
@@ -458,7 +459,7 @@ def getrs_suite(*, suite, precision, case):
 #    trsm_upper_right_none   | trsm_lower_right_none
 #    <trti2_small_upper>     | <trti2_small_lower>
 #    """
-#    fn = 'trtri'
+#    fn = 'trtri_64'
 #    mode = 'normal'
 #    size = get_size_configurations(case, mode)
 #    for s_uplo in ['upper', 'lower']:
@@ -716,7 +717,7 @@ def xxgbr_suite(*, suite, precision, case):
 #    """
 #    STEDC tests are run, for the given precision and sizes, with vectors and without vectors
 #    """
-#    fn = 'stedc' 
+#    fn = 'stedc_64' 
 #    mode = 'normal'
 #    size = get_size_configurations(case, mode)
 #    for s_evect in ['vect', 'novect']:

@@ -181,8 +181,9 @@ def get_size_configurations(case, mode):
             else:
                 size += list(chain(range(4096, 8192, 256), range(8192, 12800, 512)))
         elif c == 'huge': # huge == large for batch cases
-            if mode == 'batched' and 'large' not in case:
-                size += list(chain(zip(range(544, 1050, 32), repeat(500)), zip(range(1088, 2050, 64), repeat(50))))
+            if mode == 'batched':
+                if 'large' not in case:
+                    size += list(chain(zip(range(544, 1050, 32), repeat(500)), zip(range(1088, 2050, 64), repeat(50))))
             else:
                 size += list(chain(range(12800, 23040, 2048), range(23040, 32768, 4096)))
     return size
