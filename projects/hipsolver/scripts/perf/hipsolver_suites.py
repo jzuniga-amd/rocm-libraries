@@ -333,17 +333,17 @@ def getrf_suite(*, suite, precision, case):
         yield (row, s, f'{COMMON_ARGS} -f {fn} -r {precision} -m {s} --lda {ld}')
 
 
-#def getrfBatch_suite(*, suite, precision, case):
-#    """
-#    GETRFBATCH tests are run with the given precision and sizes (only square case)
-#    """
-#    fn = 'getrf_batched'
-#    mode = 'batched'
-#    size = get_size_configurations(case, mode)
-#    for s, bc in size:
-#        ld = get_ld(s)
-#        row = {'name': precision+suite, 'name_test': suite, 'function': fn, 'precision': precision, 'batch_count': bc, 'n': s}
-#        yield (row, s, f'{COMMON_ARGS} -f {fn} -r {precision} --batch_count {bc} -m {s} --lda {ld}')
+def getrfBatch_suite(*, suite, precision, case):
+    """
+    GETRFBATCH tests are run with the given precision and sizes (only square case)
+    """
+    fn = 'getrf_batched'
+    mode = 'batched'
+    size = get_size_configurations(case, mode)
+    for s, bc in size:
+        ld = get_ld(s)
+        row = {'name': precision+suite, 'name_test': suite, 'function': fn, 'precision': precision, 'batch_count': bc, 'n': s}
+        yield (row, s, f'{COMMON_ARGS} -f {fn} -r {precision} --batch_count {bc} -m {s} --lda {ld}')
 
 
 def getrfNpvt_suite(*, suite, precision, case):
@@ -359,17 +359,17 @@ def getrfNpvt_suite(*, suite, precision, case):
         yield (row, s, f'{COMMON_ARGS} -f {fn} -r {precision} -m {s} --lda {ld}')
 
 
-#def getrfNpvtBatch_suite(*, suite, precision, case):
-#    """
-#    GETRFNPVTBATCH tests are run with the given precision and sizes (only square case)
-#    """
-#    fn = 'getrf_npvt_batched'
-#    mode = 'batched'
-#    size = get_size_configurations(case, mode)
-#    for s, bc in size:
-#        ld = get_ld(s)
-#        row = {'name': precision+suite, 'name_test': suite, 'function': fn, 'precision': precision, 'batch_count': bc, 'n': s}
-#        yield (row, s, f'{COMMON_ARGS} -f {fn} -r {precision} --batch_count {bc} -m {s} --lda {ld}')
+def getrfNpvtBatch_suite(*, suite, precision, case):
+    """
+    GETRFNPVTBATCH tests are run with the given precision and sizes (only square case)
+    """
+    fn = 'getrf_npvt_batched'
+    mode = 'batched'
+    size = get_size_configurations(case, mode)
+    for s, bc in size:
+        ld = get_ld(s)
+        row = {'name': precision+suite, 'name_test': suite, 'function': fn, 'precision': precision, 'batch_count': bc, 'n': s}
+        yield (row, s, f'{COMMON_ARGS} -f {fn} -r {precision} --batch_count {bc} -m {s} --lda {ld}')
 
 
 def getrs_suite(*, suite, precision, case):
@@ -913,9 +913,9 @@ SUITES = {
     
     # General linear systems
     'getrf': getrf_suite,
-#    'getrfBatch': getrfBatch_suite,
+    'getrfBatch': getrfBatch_suite,
     'getrfNpvt': getrfNpvt_suite,
-#    'getrfNpvtBatch': getrfNpvtBatch_suite,
+    'getrfNpvtBatch': getrfNpvtBatch_suite,
     'getrs': getrs_suite,
 #    'getrsBatch': getrsBatch_suite,
 #    'getrsNpvt': getrsNpvt_suite,               

@@ -93,6 +93,8 @@ class hipsolver_dispatcher
             {"gesvdj_batched", testing_gesvdj<API_NORMAL, false, true, T>},
             {"getrf", testing_getrf<API_NORMAL, false, false, false, T, int, int>},
             {"getrf_npvt", testing_getrf<API_NORMAL, false, false, true, T, int, int>},
+            {"getrf_batched", testing_getrf<API_NORMAL, true, false, false, T, int, int>},
+            {"getrf_npvt_batched", testing_getrf<API_NORMAL, true, false, true, T, int, int>},
             {"getrf_64", testing_getrf<API_COMPAT, false, false, false, T, int64_t, size_t>},
             {"getrf_npvt_64", testing_getrf<API_COMPAT, false, false, true, T, int64_t, size_t>},
             {"getrs", testing_getrs<API_NORMAL, false, false, T, int, int>},
