@@ -499,6 +499,10 @@ rocblas_status rocsolver_gesvd_template(rocblas_handle handle,
         computing a thin SVD, a fast algorithm could be executed by doing some
         computations out-of-place. **/
 
+print_device_matrix(std::cout,"A",m,n,A,lda);
+
+
+
     if(thinSVD)
     /*******************************************/
     /********** CASE: CHOOSE THIN-SVD **********/

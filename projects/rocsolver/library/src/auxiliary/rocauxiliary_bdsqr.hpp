@@ -1267,9 +1267,19 @@ rocblas_status rocsolver_bdsqr_template(rocblas_handle handle,
     ROCSOLVER_LAUNCH_KERNEL(reset_info, gridReset, threadsReset, 0, stream, completed,
                             batch_count + 2, 0);
 
+
+print_device_matrix(std::cout,"D",1,n,D,1);
+print_device_matrix(std::cout,"E",1,n-1,E,1);
+
+
     // check for NaNs and Infs in input
     ROCSOLVER_LAUNCH_KERNEL((bdsqr_init<T>), gridBasic, threadsBasic, 0, stream, n, D, strideD, E,
                             strideE, info, maxiter, sfm, tol, splits_map, work, strideW, completed);
+
+
+print_device_matrix(std::cout,"splits",1,2*n,splits_map,1);
+print_device_matrix(std::cout,"work",1,4,work,1);
+
 
     if(n > 1)
     {
@@ -1355,6 +1365,15 @@ rocblas_status rocsolver_bdsqr_template(rocblas_handle handle,
     ROCSOLVER_LAUNCH_KERNEL((bdsqr_finalize<T>), gridBasic, threadsVUC, 0, stream, n, nv, nu, nc, D,
                             strideD, E, strideE, V, shiftV, ldv, strideV, U, shiftU, ldu, strideU,
                             C, shiftC, ldc, strideC, info, splits_map, completed);
+
+
+
+print_device_matrix(std::cout,"Dfin",1,n,D,1);
+print_device_matrix(std::cout,"Efin",1,n-1,E,1);
+print_device_matrix(std::cout,"Ufin",n,n,U,ldu);
+print_device_matrix(std::cout,"Vfin",n,n,V,ldv);
+
+
 
     return rocblas_status_success;
 }

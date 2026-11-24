@@ -158,10 +158,16 @@ void bdsqr_initData(const rocblas_handle handle,
         // Adding possible gaps to fully test the algorithm.
         for(rocblas_int i = 0; i < n - 1; ++i)
         {
-            hE[0][i] -= 5;
+//            hE[0][i] = 0;
             hD[0][i] -= 4;
         }
         hD[0][n - 1] -= 4;
+
+hE[0][1] = S(0.0);
+//hE[0][3] = S(0.0);
+//hE[0][4] = S(0.0);
+//hE[0][5] = S(0.0);
+
 
         // (Forcing non-convergence expecting lapack and rocsolver to give
         // the same orthogonal equivalent matrix is not possible. Testing
@@ -260,6 +266,9 @@ void bdsqr_getError(const rocblas_handle handle,
     // complementary execution to compute all singular vectors if needed
     if(nvT > 0 || nuT > 0)
     {
+
+printf("QUESO..........\n");
+
         // send data to GPU
         bdsqr_initData<false, true, T>(handle, uplo, n, nvT, nuT, 0, dD, dE, dV, ldv, dU, ldu, dC,
                                        ldc, dInfo, hD, hE, hV, hU, hC, hInfo, D, E, false);
@@ -281,6 +290,11 @@ void bdsqr_getError(const rocblas_handle handle,
     // GPU lapack
     CHECK_ROCBLAS_ERROR(rocsolver_bdsqr(handle, uplo, n, nv, nu, nc, dD.data(), dE.data(), dV.data(),
                                         ldv, dU.data(), ldu, dC.data(), ldc, dInfo.data()));
+
+hipError_t sync = hipDeviceSynchronize();
+printf("hipDeviceSynchronize -> %s\n", hipGetErrorString(sync));
+
+
     CHECK_HIP_ERROR(hDRes.transfer_from(dD));
     CHECK_HIP_ERROR(hERes.transfer_from(dE));
     CHECK_HIP_ERROR(hInfoRes.transfer_from(dInfo));

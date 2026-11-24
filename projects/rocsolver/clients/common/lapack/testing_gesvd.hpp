@@ -218,8 +218,20 @@ void gesvd_initData(const rocblas_handle handle,
         {
             if(!singular)
             {
+
+hA[0][0] = -0.69722241929656281;
+hA[0][1] = 0.0;
+hA[0][2] = 0.0;
+hA[0][3] = 6.7311090023199955e-12;
+hA[0][4] = 0.083309243867907307;
+hA[0][5] =  0.0;
+hA[0][6] = -0.0026135449071616242;
+hA[0][7] = 2.1007253529455472e-13;
+hA[0][8] = 0.08326844549867421;
+
+
                 // scale A to avoid singularities
-                for(rocblas_int i = 0; i < m; i++)
+/*                for(rocblas_int i = 0; i < m; i++)
                 {
                     for(rocblas_int j = 0; j < n; j++)
                     {
@@ -228,7 +240,7 @@ void gesvd_initData(const rocblas_handle handle,
                         else
                             hA[b][i + j * lda] -= 4;
                     }
-                }
+                }*/
             }
             else
             {
@@ -345,6 +357,13 @@ void gesvd_getError(const rocblas_handle handle,
     CHECK_ROCBLAS_ERROR(rocsolver_gesvd(STRIDED, handle, left_svect, right_svect, m, n, dA.data(),
                                         lda, stA, dS.data(), stS, dU.data(), ldu, stU, dV.data(),
                                         ldv, stV, dE.data(), stE, fa, dinfo.data(), bc));
+
+hipError_t sync = hipDeviceSynchronize();
+    printf("hipDeviceSynchronize -> %s\n", hipGetErrorString(sync));
+    if (sync != hipSuccess) { printf("REPRODUCED: gesvd faulted\n"); }
+
+
+
 
     CHECK_HIP_ERROR(hSres.transfer_from(dS));
     CHECK_HIP_ERROR(hinfoRes.transfer_from(dinfo));
